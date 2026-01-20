@@ -1,9 +1,12 @@
 from typing import Annotated
 from fastapi import FastAPI, UploadFile, File
 import os
+from database import Base, engine, get_db
 
 import helper
 import config
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
