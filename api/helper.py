@@ -3,9 +3,8 @@ import uuid
 import os
 import config
 
+
 # check if the file is supported or not
-
-
 def check_file_type(content_type: str | None):
     if not content_type:
         return False
@@ -16,6 +15,7 @@ def check_file_type(content_type: str | None):
     return True
 
 
+# function to generate a file name with random uuid+original_filename
 def get_file_name(name: str | None):
     random_id = str(uuid.uuid4())
     if name:

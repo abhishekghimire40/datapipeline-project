@@ -21,9 +21,11 @@ class Dataset(Base):
     )
 
     # forward referencing ETLJob table even before is created
+    # creating one to many relationship with etl_jobs table
     jobs: Mapped[list[ETLJob]] = relationship(back_populates="dataset")
 
 
+# enums for job status in ETLJob table
 class Status(enum.Enum):
     PENDING = "pending"
     PROCESSING = "processing"
@@ -50,4 +52,5 @@ class ETLJob(Base):
     )
     stats_json: Mapped[dict] = mapped_column(JSON, default=dict)
 
+    # creating many to one relationship with datasets table
     dataset: Mapped[Dataset] = relationship(back_populates="jobs")

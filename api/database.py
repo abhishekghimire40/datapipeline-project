@@ -2,12 +2,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 
+# url for connecting my database
 SQLALCHEMY_DATABASE_URL = "sqlite:///./dataset.db"
 
+# creating connection to our database
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
 
+# creates session for each database query or operation
 SessionLocal = sessionmaker(autoflush=False, autocommit=False, bind=engine)
 
 
