@@ -2,6 +2,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, UploadFile, File, status
 from dotenv import load_dotenv
 import os
+import redis
 
 
 from sqlalchemy.future import select
@@ -15,7 +16,18 @@ import helper
 import config
 
 
+# postgres database connection and table creation
 Base.metadata.create_all(bind=engine)
+
+# redis connection
+pool = redis.ConnectionPool(host=config.REDIS_HOST, port=config.REDIS_PORT, db=0)
+redis = redis.Redis(
+    connection_pool=pool,
+    decode_responses=True,
+    socket_connect_timeout=3,
+    socket_timeout=5,
+)
+
 
 app = FastAPI()
 
