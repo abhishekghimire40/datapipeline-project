@@ -1,14 +1,19 @@
 from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, UploadFile, File, status
+from dotenv import load_dotenv
 import os
 
+
+from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 from database import Base, engine, get_db
+
 
 import schemas
 import models
 import helper
 import config
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -21,7 +26,7 @@ if not os.path.exists(config.UPLOAD_DIRECTORY):
 
 @app.get("/")
 async def root():
-    return {"message": "Hello world"}
+    return {"message": "Hello from server"}
 
 
 # method to recieve the uploaded data file
@@ -45,21 +50,53 @@ async def get_file(file: Annotated[UploadFile, File()], db: Session = Depends(ge
     try:
         await helper.write_file(file, file_path)
     except Exception as e:
-        os.remove(file_path)
-        return {"error": e.__str__()}
+        helper.file_cleanup(file_path)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="couldn't save file try again",
+        )
 
     # creating a sqlalchemy model instance
-    data_item = models.Dataset(original_file_name=filename, stored_path=file_path)
-    # adding object to session
-    db.add(data_item)
-    # commit changes to the database
-    db.commit()
+    try:
 
-    # creating a job for the dataset that user provided
-    job_item = models.ETLJob(dataset_id=data_item.id, status="PENDING")
-    # adding job obect to session
-    db.add(job_item)
-    # commiting the changes to the database
-    db.commit()
+        with db.begin():  # commit will happen automatically if everything in the block succeeds else rollback
+            data_item = models.Dataset(
+                original_file_name=filename, stored_path=file_path
+            )
+            # adding object to session
+            db.add(data_item)
+            db.flush()  # flush helps to get id and all without commiting
+            # creating a job for the dataset that user provided
+            job_item = models.ETLJob(
+                dataset_id=data_item.id, status=models.Status.PENDING
+            )
+            # adding job obect to session
+            db.add(job_item)
+            db.flush()
+
+    except Exception as e:
+
+        # delete the file that was stored
+        helper.file_cleanup(file_path=file_path)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="internal server error",
+        )
 
     return job_item
+
+
+@app.get(
+    "/jobs/{job_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=schemas.SingleJobResponse,
+)
+async def get_job(job_id: int, db: Session = Depends(get_db)):
+    result = db.execute(select(models.ETLJob).where(models.ETLJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="job with provided id is not available",
+        )
+    return job

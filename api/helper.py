@@ -33,3 +33,9 @@ async def write_file(file, file_path):
             if not chunk:  # if we reach the end of file then break
                 break
             await f.write(chunk)
+
+
+# function to delete file in the given path
+def file_cleanup(file_path):
+    if os.path.exists(file_path):
+        os.remove(file_path)
